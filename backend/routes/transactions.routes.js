@@ -30,13 +30,16 @@ const {
   getTransactions, 
   getTransactionById, 
   getTransactionsBySchool, 
-  getTransactionStatus 
+  getTransactionStatus,
+  getDistinctSchools
 } = require("../controllers/transactions.controller");
 
 // Routes
 router.get("/transactions", auth, getTransactions);
 router.get("/transactions/:id", auth, getTransactionById);
 router.get("/transactions/school/:schoolId", auth, getTransactionsBySchool);
+router.get("/transactions/schools", getDistinctSchools); 
 router.get("/transaction-status/:id", auth, getTransactionStatus);
+
 
 module.exports = router;

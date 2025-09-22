@@ -7,6 +7,9 @@ import TransactionDetails from "../pages/TransactionDetails";
 import SchoolTransactions from "../pages/SchoolTransactions";
 import StatusCheck from "../pages/StatusCheck";
 import Layout from "../components/Layout";
+import Reports from "../pages/Reports";
+import Settingss from "../pages/Settingss";
+import { Settings } from "lucide-react";
 
 // Simple protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -27,6 +30,26 @@ export default function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Reports />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Settingss />
             </Layout>
           </ProtectedRoute>
         }

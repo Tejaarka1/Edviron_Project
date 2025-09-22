@@ -86,6 +86,20 @@ exports.getTransactions = async (req, res, next) => {
  * GET /transactions/:id
  * Fetch transaction by Mongo _id
  */
+/**
+ * GET /transactions/schools
+ * Fetch distinct list of school IDs
+ */
+exports.getDistinctSchools = async (req, res, next) => {
+  try {
+    const schools = await Order.distinct("school_id");
+    res.json({ success: true, data: schools });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 exports.getTransactionById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -115,6 +129,10 @@ exports.getTransactionById = async (req, res, next) => {
   }
 };
 
+/**
+ * GET /transactions/school/:schoolId
+ * Fetch all transactions for a given school
+ */
 /**
  * GET /transactions/school/:schoolId
  * Fetch all transactions for a given school
@@ -152,11 +170,14 @@ exports.getTransactionsBySchool = async (req, res, next) => {
     ];
 
     const results = await Order.aggregate(pipeline);
-    res.json(results);
+
+    // ✅ Wrap response in a consistent shape
+    res.json({ success: true, data: results });
   } catch (err) {
     next(err);
   }
 };
+
 
 // ... your getTransactions, getTransactionById, getTransactionsBySchool above ...
 
