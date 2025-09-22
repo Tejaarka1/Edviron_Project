@@ -139,9 +139,9 @@ exports.getTransactionsBySchool = async (req, res, next) => {
         $project: {
           collect_id: "$_id",
           school_id: 1,
-          gateway: "$gateway_name",
+          gateway: { $ifNull: ["$gateway_name", "Sandbox"] },
           order_amount: "$latestStatus.order_amount",
-          transaction_amount: "$latestStatus.transaction_amount",
+          transaction_amount: { $ifNull: ["$latestStatus.transaction_amount", "N/A"] },
           status: "$latestStatus.status",
           custom_order_id: 1,
           student_name: "$student_info.name",

@@ -6,6 +6,28 @@ const { callCreateCollectRequest, checkCollectRequestStatus } = require("../serv
 /**
  * POST /api/payment/create-payment
  */
+
+function mapGateway(method) {
+  switch (method) {
+    case "upi":
+      return "UPI";
+    case "card":
+      return "Card";
+    case "netbanking":
+      return "Net Banking";
+    case "wallet":
+      return "Wallet";
+    case "paylater":
+      return "Pay Later";
+    case "flexmoney":
+      return "Flexmoney EMI";
+    case "zest":
+      return "Zest EMI";
+    default:
+      return "Sandbox"; // fallback
+  }
+}
+
 exports.createPayment = async (req, res, next) => {
   try {
     const { student_info, order_amount, custom_order_id, trustee_id, gateway_name, callback_url } = req.body;
@@ -106,5 +128,40 @@ exports.checkStatus = async (req, res, next) => {
     return res.json({ ok: true, gatewayResp, updatedStatus: updated });
   } catch (err) {
     next(err);
+  }
+};
+
+
+exports.paymentCallback = async (req, res) => {
+  try {
+    const { edvironCollectRequestId, status, method } = req.query;
+
+    if (!edvironCollectRequestId) {
+      return res.status(400).json({ error: "Missing collectRequestId" });
+    }
+
+    const gateway = mapGateway(method); // dynamic mapping
+
+    await OrderStatus.findOneAndUpdate(
+      { collect_id: edvironCollectRequestId },
+      {
+        $set: {
+          status: status || "failed",
+          transaction_amount: req.query.amount || "NA",
+          gateway,
+          updated_at: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    if (status === "success") {
+      return res.redirect("http://localhost:5173/payment-success");
+    } else {
+      return res.redirect("http://localhost:5173/payment-failed");
+    }
+  } catch (error) {
+    console.error("Callback Error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 };
