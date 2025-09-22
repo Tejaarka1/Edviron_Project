@@ -158,6 +158,46 @@ exports.getTransactionsBySchool = async (req, res, next) => {
   }
 };
 
+// ... your getTransactions, getTransactionById, getTransactionsBySchool above ...
+
+/**
+ * GET /transaction-status/:id
+ */
+exports.getTransactionStatus = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    let order = null;
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      order = await Order.findById(id).lean();
+    }
+    if (!order) {
+      order = await Order.findOne({ custom_order_id: id }).lean();
+    }
+
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    const latestStatus = await OrderStatus.findOne({ collect_id: order._id })
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.json({
+      collect_id: order._id,
+      school_id: order.school_id,
+      gateway: order.gateway_name,
+      custom_order_id: order.custom_order_id,
+      order_amount: latestStatus?.order_amount || null,
+      transaction_amount: latestStatus?.transaction_amount || null,
+      status: latestStatus?.status || null,
+      payment_time: latestStatus?.payment_time || null,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// 
+
 /**
  * GET /transaction-status/:id
  * Check status by Mongo _id or custom_order_id
