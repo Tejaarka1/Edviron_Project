@@ -1,19 +1,3 @@
-// import React from "react";
-// import { Routes, Route } from "react-router-dom";
-// import Login from "../pages/Login";
-// import Dashboard from "../pages/Dashboard";
-
-// export default function AppRoutes() {   // 👈 this must be "default"
-//   return (
-//     <Routes>
-//       <Route path="/" element={<Login />} />
-//       <Route path="/login" element={<Login />} />
-//       <Route path="/dashboard" element={<Dashboard />} />
-//     </Routes>
-//   );
-// }
-
-// inside <Routes>
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "../pages/Login";
@@ -22,7 +6,7 @@ import Transactions from "../pages/Transactions";
 import TransactionDetails from "../pages/TransactionDetails";
 import SchoolTransactions from "../pages/SchoolTransactions";
 import StatusCheck from "../pages/StatusCheck";
-import Layout from "../components/Layout"; // if you already have one
+import Layout from "../components/Layout";
 
 // Simple protected route wrapper
 const ProtectedRoute = ({ children }) => {
@@ -35,6 +19,7 @@ export default function AppRoutes() {
     <Routes>
       {/* Public route */}
       <Route path="/" element={<Login />} />
+
       {/* Protected routes */}
       <Route
         path="/dashboard"
@@ -46,6 +31,8 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      {/* Transactions Overview */}
       <Route
         path="/dashboard/transactions"
         element={
@@ -56,6 +43,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      {/* Transaction Details */}
       <Route
         path="/dashboard/transactions/:id"
         element={
@@ -66,7 +54,8 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      {/* ========= */}
+
+      {/* Sub-pages under Transactions */}
       <Route
         path="/dashboard/transactions/school"
         element={
@@ -87,7 +76,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      {/* ========== */}
+
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
