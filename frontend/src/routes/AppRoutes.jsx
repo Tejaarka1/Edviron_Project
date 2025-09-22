@@ -9,6 +9,8 @@ import StatusCheck from "../pages/StatusCheck";
 import Layout from "../components/Layout";
 import Reports from "../pages/Reports";
 import Settingss from "../pages/Settingss";
+import CreatePayment from "../pages/CreatePayment";
+import PaymentCallback from "../pages/PaymentCallback";
 import { Settings } from "lucide-react";
 
 // Simple protected route wrapper
@@ -99,6 +101,19 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      <Route
+        path="/dashboard/create-payment"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <CreatePayment />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route path="/payment-callback" element={<PaymentCallback />} />
 
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />

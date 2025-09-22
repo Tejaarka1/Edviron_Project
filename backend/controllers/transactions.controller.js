@@ -82,10 +82,7 @@ exports.getTransactions = async (req, res, next) => {
   }
 };
 
-/**
- * GET /transactions/:id
- * Fetch transaction by Mongo _id
- */
+
 /**
  * GET /transactions/schools
  * Fetch distinct list of school IDs
@@ -129,10 +126,6 @@ exports.getTransactionById = async (req, res, next) => {
   }
 };
 
-/**
- * GET /transactions/school/:schoolId
- * Fetch all transactions for a given school
- */
 /**
  * GET /transactions/school/:schoolId
  * Fetch all transactions for a given school
@@ -217,44 +210,3 @@ exports.getTransactionStatus = async (req, res, next) => {
   }
 };
 
-// 
-
-/**
- * GET /transaction-status/:id
- * Check status by Mongo _id or custom_order_id
- */
-// exports.getTransactionById = async (req, res, next) => {
-//   try {
-//     const { id } = req.params;
-
-//     // Validate if it's a proper Mongo ObjectId
-//     if (!mongoose.Types.ObjectId.isValid(id)) {
-//       return res.status(400).json({ message: "Invalid transaction ID format" });
-//     }
-
-//     // Fetch order
-//     const order = await Order.findById(id).lean();
-//     if (!order) {
-//       return res.status(404).json({ message: "Transaction not found" });
-//     }
-
-//     // Fetch latest status for this order
-//     const latestStatus = await OrderStatus.findOne({ collect_id: order._id })
-//       .sort({ created_at: -1 })
-//       .lean();
-
-//     // Return only the required fields
-//     res.json({
-//       collect_id: order._id,
-//       school_id: order.school_id,
-//       gateway: order.gateway_name,
-//       custom_order_id: order.custom_order_id,
-//       order_amount: latestStatus?.order_amount || null,
-//       transaction_amount: latestStatus?.transaction_amount || null,
-//       status: latestStatus?.status || null,
-//       payment_time: latestStatus?.payment_time || null,
-//     });
-//   } catch (err) {
-//     next(err);
-//   }
-// };

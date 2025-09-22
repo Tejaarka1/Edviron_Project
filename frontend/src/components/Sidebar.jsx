@@ -53,6 +53,9 @@ export default function Sidebar() {
       path: "/settings",
       icon: <Settings size={18} />,
     },
+
+
+    { name: "Create Payment", path: "/dashboard/create-payment", icon: <CheckCircle size={16} /> },
   ];
 
   return (

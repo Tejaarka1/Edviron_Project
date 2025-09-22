@@ -26,6 +26,7 @@ exports.createPayment = async (req, res, next) => {
 
     // Prepare callback_url - if frontend didn't pass one, you can construct a default
     const cb = callback_url || `${process.env.FRONTEND_BASE_URL || 'http://localhost:3000'}/payment-callback`;
+    // const cb = callback_url || `${process.env.FRONTEND_BASE_URL || 'http://localhost:3000'}/payment-callback`;
 
     // call the payment gateway
     const gatewayResp = await callCreateCollectRequest({ amount: order_amount, callback_url: cb });
