@@ -1,17 +1,20 @@
-const express = require("express");
-const router = express.Router();
+// backend/routes/transactions.routes.js
+const router = require("express").Router();
+const auth = require("../middlewares/auth.middleware");
 
-const transactionsController = require("../controllers/transactions.controller");
-const dashboardController = require("../controllers/dashboard.controller");
+const {
+  getTransactions,
+  getTransactionById,
+  getTransactionsBySchool,
+  getTransactionStatus,
+  getDistinctSchools,
+} = require("../controllers/transactions.controller");
 
-// Transactions
-router.get("/transactions", transactionsController.getTransactions);
-router.get("/transactions/:id", transactionsController.getTransactionById);
-router.get("/transactions/school/:schoolId", transactionsController.getTransactionsBySchool);
-router.get("/transactions/schools", transactionsController.getDistinctSchools);
-router.get("/transaction-status/:id", transactionsController.getTransactionStatus);
-
-// Dashboard stats
-router.get("/dashboard", dashboardController.getDashboardStats);
+// list transactions with filters (protected)
+router.get("/transactions", auth, getTransactions);
+router.get("/transactions/:id", auth, getTransactionById);
+router.get("/transactions/school/:schoolId", auth, getTransactionsBySchool);
+router.get("/transactions/schools", auth, getDistinctSchools);
+router.get("/transaction-status/:id", auth, getTransactionStatus);
 
 module.exports = router;

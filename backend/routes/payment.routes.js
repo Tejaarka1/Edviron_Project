@@ -1,11 +1,12 @@
+// backend/routes/payment.routes.js
 const router = require("express").Router();
-const paymentController = require("../controllers/payment.controller");
+const auth = require("../middlewares/auth.middleware");
+const { createPayment, checkStatus } = require("../controllers/payment.controller");
 
-// If you require auth for create-payment, add your auth middleware here.
-// router.post("/create-payment", auth, paymentController.createPayment);
-router.post("/create-payment", paymentController.createPayment);
+// Create payment (protected)
+router.post("/create-payment", auth, createPayment);
 
-// callback route that PG will redirect to (or you can use webhook)
-router.get("/payment-callback", paymentController.paymentCallback);
+// Check status - keep protected if frontend can call with token; otherwise remove auth
+router.get("/status/:collect_request_id", auth, checkStatus);
 
 module.exports = router;

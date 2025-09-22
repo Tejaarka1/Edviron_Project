@@ -136,15 +136,9 @@ export default function Transactions() {
                   <td className="px-4 py-3 border">{startIndex + index + 1}</td>
                   <td className="px-4 py-3 border">{txn.collect_id}</td>
                   <td className="px-4 py-3 border">{txn.school_id}</td>
-                  {/* <td className="px-4 py-3 border">{txn.gateway}</td> */}
-                  <td className="px-4 py-3 border">{txn.gateway || "Sandbox"}</td>
+                  <td className="px-4 py-3 border">{txn.gateway}</td>
                   <td className="px-4 py-3 border">₹{txn.order_amount || "-"}</td>
-                  {/* <td className="px-4 py-3 border">₹{txn.transaction_amount || "-"}</td> */}
-                  <td className="px-4 py-3 border">
-                  {txn.transaction_amount && txn.transaction_amount !== "N/A"
-                    ? `₹${txn.transaction_amount}`
-                    : "N/A"}
-                </td>
+                  <td className="px-4 py-3 border">₹{txn.transaction_amount || "-"}</td>
                   <td className={`px-4 py-3 border font-semibold ${txn.status === "success" ? "text-green-600" : txn.status === "failed" ? "text-red-600" : "text-yellow-600"}`}>
                     {txn.status || "initiated"}
                   </td>

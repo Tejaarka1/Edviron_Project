@@ -1,55 +1,54 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosClient from "../api/axiosClient";
 
-const Dashboard = () => {
-  const [stats, setStats] = useState({
-    total: 0,
-    success: 0,
-    failed: 0,
-    todayRevenue: 0,
-  });
-  const [loading, setLoading] = useState(true);
+export default function Dashboard() {
+  const [kpis, setKpis] = useState({ total: 0, success: 0, failed: 0, todayRevenue: 0 });
 
   useEffect(() => {
-    const fetchStats = async () => {
+    (async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/dashboard"); // adjust baseURL if needed
-        setStats(res.data);
-      } catch (err) {
-        console.error("Error fetching dashboard stats:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+        // fetch many transactions (backend pagination default can be overridden)
+        const res = await axiosClient.get("/transactions", { params: { limit: 1000 } });
+        const txns = res.data.data || [];
 
-    fetchStats();
+        const total = txns.length;
+        const success = txns.filter((t) => t.status === "success").length;
+        const failed = txns.filter((t) => t.status === "failed").length;
+
+        const today = new Date().toISOString().slice(0, 10);
+        const todayRevenue = txns
+          .filter((t) => t.status === "success" && t.payment_time && t.payment_time.slice(0, 10) === today)
+          .reduce((sum, t) => sum + (t.transaction_amount || 0), 0);
+
+        setKpis({ total, success, failed, todayRevenue });
+      } catch (err) {
+        console.error("Error fetching dashboard KPIs:", err);
+      }
+    })();
   }, []);
 
-  if (loading) return <p className="p-4">Loading dashboard...</p>;
-
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6">Transactions Portal</h1>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-4 bg-white shadow rounded">
-          <h2 className="text-lg font-semibold">Total Transactions</h2>
-          <p className="text-2xl font-bold">{stats.total}</p>
+    <div style={{ padding: 20 }}>
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="grid grid-cols-4 gap-4">
+        <div className="p-4 border rounded shadow">
+          <div>Total Transactions</div>
+          <div className="text-xl font-bold">{kpis.total}</div>
         </div>
-        <div className="p-4 bg-white shadow rounded">
-          <h2 className="text-lg font-semibold">Success</h2>
-          <p className="text-2xl font-bold text-green-600">{stats.success}</p>
+        <div className="p-4 border rounded shadow">
+          <div>Success</div>
+          <div className="text-xl font-bold text-green-600">{kpis.success}</div>
         </div>
-        <div className="p-4 bg-white shadow rounded">
-          <h2 className="text-lg font-semibold">Failed</h2>
-          <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
+        <div className="p-4 border rounded shadow">
+          <div>Failed</div>
+          <div className="text-xl font-bold text-red-600">{kpis.failed}</div>
         </div>
-        <div className="p-4 bg-white shadow rounded">
-          <h2 className="text-lg font-semibold">Today Revenue</h2>
-          <p className="text-2xl font-bold">₹{stats.todayRevenue || 0}</p>
+        <div className="p-4 border rounded shadow">
+          <div>Today Revenue</div>
+          <div className="text-xl font-bold">₹{kpis.todayRevenue}</div>
         </div>
       </div>
     </div>
   );
-};
-
-export default Dashboard;
+}
