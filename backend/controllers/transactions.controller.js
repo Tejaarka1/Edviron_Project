@@ -3,15 +3,15 @@ const Order = require("../models/Order");
 const OrderStatus = require("../models/OrderStatus");
 
 /**
- * GET /transactions
- * Supports: pagination, filters, search, date range, sorting
+ * GET /api/transactions
+ * Query params: page, limit, sort, order, status, schoolIds, startDate, endDate, search
  */
 exports.getTransactions = async (req, res, next) => {
   try {
     const {
       page = 1,
       limit = 20,
-      sort = "payment_time",
+      sort = "created_at",
       order = "desc",
       status,
       schoolIds,
@@ -34,12 +34,18 @@ exports.getTransactions = async (req, res, next) => {
         e.setHours(23, 59, 59, 999);
         range.$lte = e;
       }
-      match["latestStatus.payment_time"] = range;
+      match["latestStatus.created_at"] = range;
     }
 
     if (search) {
       const regex = new RegExp(search, "i");
-      match.$or = [{ custom_order_id: regex }, { school_id: regex }];
+      match.$or = [
+        { custom_order_id: regex },
+        { school_id: regex },
+        { "student_info.name": regex },
+        { "student_info.id": regex },
+        { "student_info.email": regex },
+      ];
     }
 
     const pipeline = [
@@ -61,11 +67,15 @@ exports.getTransactions = async (req, res, next) => {
         $project: {
           collect_id: "$_id",
           school_id: 1,
-          gateway: "$gateway_name",
+          gateway: { $ifNull: ["$gateway_name", "Sandbox"] },
           order_amount: "$latestStatus.order_amount",
-          transaction_amount: "$latestStatus.transaction_amount",
+          transaction_amount: { $ifNull: ["$latestStatus.transaction_amount", 0] },
           status: "$latestStatus.status",
           custom_order_id: 1,
+          student_name: "$student_info.name",
+          student_id: "$student_info.id",
+          student_email: "$student_info.email",
+          created_at: 1,
         },
       },
       { $sort: { [sort]: order === "desc" ? -1 : 1 } },
@@ -82,54 +92,22 @@ exports.getTransactions = async (req, res, next) => {
   }
 };
 
-
-/**
- * GET /transactions/schools
- * Fetch distinct list of school IDs
- */
-exports.getDistinctSchools = async (req, res, next) => {
-  try {
-    const schools = await Order.distinct("school_id");
-    res.json({ success: true, data: schools });
-  } catch (err) {
-    next(err);
-  }
-};
-
-
 exports.getTransactionById = async (req, res, next) => {
   try {
     const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid transaction ID format" });
-    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid id" });
 
     const order = await Order.findById(id).lean();
-    if (!order) return res.status(404).json({ message: "Transaction not found" });
+    if (!order) return res.status(404).json({ message: "Not found" });
 
-    const latestStatus = await OrderStatus.findOne({ collect_id: order._id })
-      .sort({ created_at: -1 })
-      .lean();
+    const latestStatus = await OrderStatus.findOne({ collect_id: order._id }).sort({ created_at: -1 }).lean();
 
-    res.json({
-      collect_id: order._id,
-      school_id: order.school_id,
-      gateway: order.gateway_name,
-      order_amount: latestStatus?.order_amount || null,
-      transaction_amount: latestStatus?.transaction_amount || null,
-      status: latestStatus?.status || null,
-      custom_order_id: order.custom_order_id,
-    });
+    res.json({ order, latestStatus });
   } catch (err) {
     next(err);
   }
 };
 
-/**
- * GET /transactions/school/:schoolId
- * Fetch all transactions for a given school
- */
 exports.getTransactionsBySchool = async (req, res, next) => {
   try {
     const { schoolId } = req.params;
@@ -153,30 +131,34 @@ exports.getTransactionsBySchool = async (req, res, next) => {
         $project: {
           collect_id: "$_id",
           school_id: 1,
-          gateway: "$gateway_name",
+          gateway: { $ifNull: ["$gateway_name", "Sandbox"] },
           order_amount: "$latestStatus.order_amount",
-          transaction_amount: "$latestStatus.transaction_amount",
+          transaction_amount: { $ifNull: ["$latestStatus.transaction_amount", 0] },
           status: "$latestStatus.status",
           custom_order_id: 1,
+          student_name: "$student_info.name",
+          student_id: "$student_info.id",
+          student_email: "$student_info.email",
         },
       },
     ];
 
     const results = await Order.aggregate(pipeline);
-
-    // ✅ Wrap response in a consistent shape
     res.json({ success: true, data: results });
   } catch (err) {
     next(err);
   }
 };
 
+exports.getDistinctSchools = async (req, res, next) => {
+  try {
+    const schools = await Order.distinct("school_id");
+    res.json({ success: true, data: schools });
+  } catch (err) {
+    next(err);
+  }
+};
 
-// ... your getTransactions, getTransactionById, getTransactionsBySchool above ...
-
-/**
- * GET /transaction-status/:id
- */
 exports.getTransactionStatus = async (req, res, next) => {
   try {
     const id = req.params.id;
@@ -188,25 +170,24 @@ exports.getTransactionStatus = async (req, res, next) => {
     if (!order) {
       order = await Order.findOne({ custom_order_id: id }).lean();
     }
-
     if (!order) return res.status(404).json({ message: "Order not found" });
 
-    const latestStatus = await OrderStatus.findOne({ collect_id: order._id })
-      .sort({ created_at: -1 })
-      .lean();
+    const latestStatus = await OrderStatus.findOne({ collect_id: order._id }).sort({ created_at: -1 }).lean();
 
     res.json({
       collect_id: order._id,
       school_id: order.school_id,
-      gateway: order.gateway_name,
+      gateway: order.gateway_name || "Sandbox",
       custom_order_id: order.custom_order_id,
-      order_amount: latestStatus?.order_amount || null,
-      transaction_amount: latestStatus?.transaction_amount || null,
-      status: latestStatus?.status || null,
-      payment_time: latestStatus?.payment_time || null,
+      order_amount: latestStatus?.order_amount || 0,
+      transaction_amount: latestStatus?.transaction_amount || 0,
+      status: latestStatus?.status || "initiated",
+      payment_time: latestStatus?.payment_time || latestStatus?.created_at || null,
+      student_name: order.student_info?.name || "",
+      student_id: order.student_info?.id || "",
+      student_email: order.student_info?.email || "",
     });
   } catch (err) {
     next(err);
   }
 };
-

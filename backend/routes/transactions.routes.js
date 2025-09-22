@@ -1,45 +1,17 @@
-// const router = require("express").Router();
-// const auth = require("../middlewares/auth.middleware");
+const express = require("express");
+const router = express.Router();
 
-// const {
-//   getTransactions,
-//   getTransactionById,
-//   getTransactionsBySchool,
-//   getTransactionStatus,
-// } = require("../controllers/transactions.controller");
+const transactionsController = require("../controllers/transactions.controller");
+const dashboardController = require("../controllers/dashboard.controller");
 
-// // list transactions with filters
-// router.get("/transactions", auth, getTransactions);
+// Transactions
+router.get("/transactions", transactionsController.getTransactions);
+router.get("/transactions/:id", transactionsController.getTransactionById);
+router.get("/transactions/school/:schoolId", transactionsController.getTransactionsBySchool);
+router.get("/transactions/schools", transactionsController.getDistinctSchools);
+router.get("/transaction-status/:id", transactionsController.getTransactionStatus);
 
-// // by school
-// router.get("/transactions/school/:schoolId", auth, getTransactionsBySchool);
-
-// // check status (by _id or custom_order_id)
-// router.get("/transaction-status/:id", auth, getTransactionStatus);
-
-// // by transaction _id
-// router.get("/transactions/:id", auth, getTransactionById);
-
-// module.exports = router;
-
-
-const router = require("express").Router();
-const auth = require("../middlewares/auth.middleware");
-
-const { 
-  getTransactions, 
-  getTransactionById, 
-  getTransactionsBySchool, 
-  getTransactionStatus,
-  getDistinctSchools
-} = require("../controllers/transactions.controller");
-
-// Routes
-router.get("/transactions", auth, getTransactions);
-router.get("/transactions/:id", auth, getTransactionById);
-router.get("/transactions/school/:schoolId", auth, getTransactionsBySchool);
-router.get("/transactions/schools", getDistinctSchools); 
-router.get("/transaction-status/:id", auth, getTransactionStatus);
-
+// Dashboard stats
+router.get("/dashboard", dashboardController.getDashboardStats);
 
 module.exports = router;

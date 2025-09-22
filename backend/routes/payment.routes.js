@@ -1,16 +1,11 @@
-// const router = require('express').Router();
-// const auth = require('../middlewares/auth.middleware');
-// const { createPayment } = require('../controllers/payment.controller');
+const router = require("express").Router();
+const paymentController = require("../controllers/payment.controller");
 
-// router.post('/create-payment', auth, createPayment);
+// If you require auth for create-payment, add your auth middleware here.
+// router.post("/create-payment", auth, paymentController.createPayment);
+router.post("/create-payment", paymentController.createPayment);
 
-// module.exports = router;
-
-const router = require('express').Router();
-const auth = require('../middlewares/auth.middleware');
-const { createPayment, checkStatus } = require('../controllers/payment.controller');
-
-router.post('/create-payment', auth, createPayment);
-router.get('/status/:collect_request_id', auth, checkStatus); // optional: check gateway status
+// callback route that PG will redirect to (or you can use webhook)
+router.get("/payment-callback", paymentController.paymentCallback);
 
 module.exports = router;

@@ -1,142 +1,78 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import Select, { components } from "react-select";
-
-const MultiValueContainer = (props) => {
-  const { index } = props;
-  const getValue = props.getValue || props.selectProps?.getValue;
-
-  if (!getValue) return <components.MultiValueContainer {...props} />;
-
-  const maxToShow = 2;
-  const overflow = getValue().length - maxToShow;
-
-  if (index < maxToShow) {
-    return <components.MultiValueContainer {...props} />;
-  }
-  if (index === maxToShow) {
-    return (
-      <div
-        style={{
-          padding: "2px 6px",
-          marginLeft: "4px",
-          background: "#e5e7eb",
-          borderRadius: "12px",
-          fontSize: "12px",
-        }}
-      >
-        +{overflow}
-      </div>
-    );
-  }
-  return null;
-};
+// src/pages/Transactions.jsx
+import React, { useEffect, useState, useMemo } from "react";
+import Select from "react-select";
+import axiosClient from "../api/axiosClient";
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
-  const [schoolFilter, setSchoolFilter] = useState([]);
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
-  const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [loading, setLoading] = useState(true);
 
-  const navigate = useNavigate();
-  const location = useLocation();
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState([]); // array of {value,label}
+  const [schoolFilter, setSchoolFilter] = useState([]);
+  const [schoolOptions, setSchoolOptions] = useState([]);
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
 
   const statusOptions = [
     { value: "success", label: "Success" },
     { value: "failed", label: "Failed" },
+    { value: "initiated", label: "Initiated" },
     { value: "pending", label: "Pending" },
   ];
 
-  const [schoolOptions, setSchoolOptions] = useState([]);
-
-  // ✅ Fetch data + build school options
   useEffect(() => {
-    const fetchTransactions = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const res = await axios.get("http://localhost:5000/api/transactions", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setTransactions(res.data.data || []);
-
-        const uniqueSchools = [...new Set(res.data.data.map((t) => t.school_id))];
-        setSchoolOptions(uniqueSchools.map((s) => ({ value: s, label: s }))); // 🔥 keep original casing
-      } catch (err) {
-        console.error("Error fetching transactions:", err);
-      }
-    };
-    fetchTransactions();
+    fetchInitial();
   }, []);
 
-  // ✅ Load filters from URL on mount
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
+  // fetch all (or first N) transactions from backend
+  const fetchInitial = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosClient.get("/transactions", { params: { limit: 1000 } });
+      const data = res.data.data || [];
+      setTransactions(data);
 
-    const search = params.get("search") || "";
-    const statuses = params.get("status")?.split(",").filter(Boolean) || [];
-    const schools = params.get("schools")?.split(",").filter(Boolean) || [];
-    const start = params.get("startDate") || "";
-    const end = params.get("endDate") || "";
+      const uniqueSchools = Array.from(new Set(data.map((d) => d.school_id).filter(Boolean))).map((s) => ({ value: s, label: s }));
+      setSchoolOptions(uniqueSchools);
+    } catch (err) {
+      console.error("Failed to fetch transactions", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    setSearchQuery(search);
-    setStatusFilter(statuses.map((s) => statusOptions.find((opt) => opt.value === s)).filter(Boolean));
-    setSchoolFilter(schools.map((s) => ({ value: s, label: s })));
-    setDateRange({ start, end });
-  }, [location.search]);
-
-  // ✅ Update URL whenever filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-
-    if (searchQuery) params.set("search", searchQuery);
-    if (statusFilter.length > 0) params.set("status", statusFilter.map((s) => s.value).join(","));
-    if (schoolFilter.length > 0) params.set("schools", schoolFilter.map((s) => s.value).join(","));
-    if (dateRange.start) params.set("startDate", dateRange.start);
-    if (dateRange.end) params.set("endDate", dateRange.end);
-
-    navigate({ search: params.toString() }, { replace: true });
-  }, [searchQuery, statusFilter, schoolFilter, dateRange, navigate]);
-
-  // ✅ Filtering logic
-  const filteredTransactions = transactions.filter((txn) => {
+  // Apply filters locally (we fetched up to limit on load)
+  const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    return transactions.filter((txn) => {
+      const matchesSearch =
+        !q ||
+        (txn.custom_order_id && txn.custom_order_id.toLowerCase().includes(q)) ||
+        (txn.collect_id && String(txn.collect_id).toLowerCase().includes(q)) ||
+        (txn.student_name && txn.student_name.toLowerCase().includes(q));
+      const matchesStatus = statusFilter.length === 0 || statusFilter.some((s) => (txn.status || "initiated") === s.value);
+      const matchesSchool = schoolFilter.length === 0 || schoolFilter.some((s) => txn.school_id === s.value);
+      const matchesDate =
+        (!dateRange.start || new Date(txn.payment_time || txn.created_at) >= new Date(dateRange.start)) &&
+        (!dateRange.end || new Date(txn.payment_time || txn.created_at) <= new Date(dateRange.end));
+      return matchesSearch && matchesStatus && matchesSchool && matchesDate;
+    });
+  }, [transactions, searchQuery, statusFilter, schoolFilter, dateRange]);
 
-    const matchesSearch =
-      !q ||
-      txn.custom_order_id?.toLowerCase().includes(q) ||
-      txn.collect_id?.toLowerCase().includes(q);
-
-    const matchesStatus =
-      statusFilter.length === 0 ||
-      statusFilter.some((s) => txn.status?.toLowerCase() === s.value);
-
-    const matchesSchool =
-      schoolFilter.length === 0 ||
-      schoolFilter.some((s) => txn.school_id === s.value); // 🔥 fixed casing issue
-
-    const matchesDate =
-      (!dateRange.start || new Date(txn.created_at) >= new Date(dateRange.start)) &&
-      (!dateRange.end || new Date(txn.created_at) <= new Date(dateRange.end));
-
-    return matchesSearch && matchesStatus && matchesSchool && matchesDate;
-  });
-
-  // ✅ Pagination
   const startIndex = (page - 1) * rowsPerPage;
-  const paginatedTransactions = filteredTransactions.slice(startIndex, startIndex + rowsPerPage);
+  const pageData = filtered.slice(startIndex, startIndex + rowsPerPage);
 
-  // ✅ Reset filters
   const resetFilters = () => {
     setSearchQuery("");
     setStatusFilter([]);
     setSchoolFilter([]);
     setDateRange({ start: "", end: "" });
     setPage(1);
-    navigate({ search: "" }, { replace: true });
   };
 
   return (
@@ -147,44 +83,18 @@ export default function Transactions() {
       <div className="flex flex-wrap gap-3 mb-4 items-center">
         <input
           type="text"
-          placeholder="Search by Order ID or Collect ID..."
+          placeholder="Search by Order ID or Collect ID or student..."
           className="border rounded px-3 py-2 w-72 text-sm"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
 
-        <Select
-          isMulti
-          options={statusOptions}
-          value={statusFilter}
-          onChange={setStatusFilter}
-          placeholder="Select statuses"
-          components={{ MultiValueContainer }}
-          className="w-60"
-        />
+        <Select isMulti options={statusOptions} value={statusFilter} onChange={setStatusFilter} placeholder="Select statuses" className="w-60" />
 
-        <Select
-          isMulti
-          options={schoolOptions}
-          value={schoolFilter}
-          onChange={setSchoolFilter}
-          placeholder="Select schools"
-          components={{ MultiValueContainer }}
-          className="w-60"
-        />
+        <Select isMulti options={schoolOptions} value={schoolFilter} onChange={setSchoolFilter} placeholder="Select schools" className="w-60" />
 
-        <input
-          type="date"
-          value={dateRange.start}
-          onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
-          className="border rounded px-2 py-1 text-sm"
-        />
-        <input
-          type="date"
-          value={dateRange.end}
-          onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
-          className="border rounded px-2 py-1 text-sm"
-        />
+        <input type="date" value={dateRange.start} onChange={(e) => setDateRange((p) => ({ ...p, start: e.target.value }))} className="border rounded px-2 py-1 text-sm" />
+        <input type="date" value={dateRange.end} onChange={(e) => setDateRange((p) => ({ ...p, end: e.target.value }))} className="border rounded px-2 py-1 text-sm" />
 
         <button onClick={() => setPage(1)} className="px-4 py-2 bg-blue-600 text-white rounded">
           Apply Filters
@@ -193,14 +103,7 @@ export default function Transactions() {
           Reset
         </button>
 
-        <select
-          className="border rounded px-2 py-1 text-sm"
-          value={rowsPerPage}
-          onChange={(e) => {
-            setRowsPerPage(Number(e.target.value));
-            setPage(1);
-          }}
-        >
+        <select className="border rounded px-2 py-1 text-sm" value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(1); }}>
           <option value={5}>5</option>
           <option value={10}>10</option>
           <option value={20}>20</option>
@@ -221,39 +124,39 @@ export default function Transactions() {
               <th className="px-4 py-3 border">Transaction Amount</th>
               <th className="px-4 py-3 border">Status</th>
               <th className="px-4 py-3 border">Order ID</th>
+              <th className="px-4 py-3 border">Student Name</th>
+              <th className="px-4 py-3 border">Student ID</th>
+              <th className="px-4 py-3 border">Email</th>
             </tr>
           </thead>
           <tbody className="divide-y">
-            {paginatedTransactions.length > 0 ? (
-              paginatedTransactions.map((txn, index) => (
-                <tr key={txn._id}>
+            {pageData.length > 0 ? (
+              pageData.map((txn, index) => (
+                <tr key={txn.collect_id || txn.custom_order_id || index}>
                   <td className="px-4 py-3 border">{startIndex + index + 1}</td>
                   <td className="px-4 py-3 border">{txn.collect_id}</td>
                   <td className="px-4 py-3 border">{txn.school_id}</td>
-                  <td className="px-4 py-3 border">{txn.gateway}</td>
-                  <td className="px-4 py-3 border">₹{txn.order_amount}</td>
-                  <td className="px-4 py-3 border">₹{txn.transaction_amount}</td>
-                  <td
-                    className={`px-4 py-3 border font-semibold ${
-                      txn.status === "success"
-                        ? "text-green-600"
-                        : txn.status === "failed"
-                        ? "text-red-600"
-                        : "text-yellow-600"
-                    }`}
-                  >
-                    {txn.status}
-                  </td>
+                  {/* <td className="px-4 py-3 border">{txn.gateway}</td> */}
+                  <td className="px-4 py-3 border">{txn.gateway || "Sandbox"}</td>
+                  <td className="px-4 py-3 border">₹{txn.order_amount || "-"}</td>
+                  {/* <td className="px-4 py-3 border">₹{txn.transaction_amount || "-"}</td> */}
                   <td className="px-4 py-3 border">
-                    <Link to={`/transactions/${txn._id}`} className="text-blue-600">
-                      {txn.custom_order_id}
-                    </Link>
+                  {txn.transaction_amount && txn.transaction_amount !== "N/A"
+                    ? `₹${txn.transaction_amount}`
+                    : "N/A"}
+                </td>
+                  <td className={`px-4 py-3 border font-semibold ${txn.status === "success" ? "text-green-600" : txn.status === "failed" ? "text-red-600" : "text-yellow-600"}`}>
+                    {txn.status || "initiated"}
                   </td>
+                  <td className="px-4 py-3 border">{txn.custom_order_id}</td>
+                  <td className="px-4 py-3 border">{txn.student_name || "-"}</td>
+                  <td className="px-4 py-3 border">{txn.student_id || "-"}</td>
+                  <td className="px-4 py-3 border">{txn.student_email || "-"}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="text-center py-4 text-gray-500">
+                <td colSpan="11" className="text-center py-4 text-gray-500">
                   No results found
                 </td>
               </tr>
@@ -264,18 +167,10 @@ export default function Transactions() {
 
       {/* Pagination */}
       <div className="flex justify-end mt-4 gap-2">
-        <button
-          disabled={page === 1}
-          onClick={() => setPage((p) => p - 1)}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-        >
+        <button disabled={page === 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1 border rounded disabled:opacity-50">
           Prev
         </button>
-        <button
-          disabled={startIndex + rowsPerPage >= filteredTransactions.length}
-          onClick={() => setPage((p) => p + 1)}
-          className="px-3 py-1 border rounded disabled:opacity-50"
-        >
+        <button disabled={startIndex + rowsPerPage >= filtered.length} onClick={() => setPage((p) => p + 1)} className="px-3 py-1 border rounded disabled:opacity-50">
           Next
         </button>
       </div>
