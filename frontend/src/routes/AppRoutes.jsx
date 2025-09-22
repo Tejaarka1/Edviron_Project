@@ -13,7 +13,6 @@
 //   );
 // }
 
-
 // inside <Routes>
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -21,6 +20,8 @@ import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import Transactions from "../pages/Transactions";
 import TransactionDetails from "../pages/TransactionDetails";
+import SchoolTransactions from "../pages/SchoolTransactions";
+import StatusCheck from "../pages/StatusCheck";
 import Layout from "../components/Layout"; // if you already have one
 
 // Simple protected route wrapper
@@ -34,7 +35,6 @@ export default function AppRoutes() {
     <Routes>
       {/* Public route */}
       <Route path="/" element={<Login />} />
-
       {/* Protected routes */}
       <Route
         path="/dashboard"
@@ -66,7 +66,28 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      {/* ========= */}
+      <Route
+        path="/dashboard/transactions/school"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <SchoolTransactions />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/transactions/status"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <StatusCheck />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      {/* ========== */}
       {/* Catch-all redirect */}
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

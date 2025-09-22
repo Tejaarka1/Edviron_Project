@@ -1,22 +1,37 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
 import axiosClient from "../api/axiosClient";
 import { Link } from "react-router-dom";
 
 export default function Dashboard() {
-  const [kpis, setKpis] = useState({ total: 0, success: 0, failed: 0, todayRevenue: 0 });
+  const [kpis, setKpis] = useState({
+    total: 0,
+    success: 0,
+    failed: 0,
+    todayRevenue: 0,
+  });
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await axiosClient.get("/transactions", { params: { limit: 1 } });
-        setKpis({
-          total: res.total || 0,
-          success: 0,
-          failed: 0,
-          todayRevenue: 0,
-        });
+        // ✅ fetch all transactions (or you can paginate if dataset is huge)
+        const res = await axiosClient.get("/transactions", { params: { limit: 1000 } });
+        const txns = res.data.data || [];
+
+        // ✅ calculate KPIs
+        const total = txns.length;
+        const success = txns.filter((t) => t.status === "success").length;
+        const failed = txns.filter((t) => t.status === "failed").length;
+
+        // today’s revenue = sum of transaction_amount for today’s successful transactions
+        const today = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+        const todayRevenue = txns
+          .filter((t) => t.status === "success" && t.payment_time?.slice(0, 10) === today)
+          .reduce((sum, t) => sum + (t.transaction_amount || 0), 0);
+
+        setKpis({ total, success, failed, todayRevenue });
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching dashboard KPIs:", err);
       }
     })();
   }, []);
